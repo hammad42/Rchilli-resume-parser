@@ -19,22 +19,22 @@ def hello_pubsub(event, context):
     pubsub_message = json.loads(base64.b64decode(event['data']).decode('utf-8'))
     bucket_name=pubsub_message['bucket']
     blob_name=pubsub_message['name']
-    #destination_file_name=blob_name.split('/')[-1] #for local deployment
-    destination_file_name="/tmp/"+blob_name.split('/')[-1] # for cloud deployment
+    destination_file_name=blob_name.split('/')[-1] #for local deployment
+    #destination_file_name="/tmp/"+blob_name.split('/')[-1] # for cloud deployment
     print(destination_file_name)
     uri="gs://"+bucket_name+"/"+blob_name
     print(uri)
-    download_blob(bucket_name, blob_name, destination_file_name)
-    filePath=destination_file_name
-    fileName=destination_file_name
+    
+    #filePath=destination_file_name #deprecated uses when we are using download as a file
+    data=download_blob(bucket_name, blob_name, destination_file_name)
 
-    with open(filePath, "rb") as filePath:
-        encoded_string = base64.b64encode(filePath.read())
+    #with open(filePath, "rb") as filePath: #deprecated uses when we are using download as a file
+    encoded_string = base64.b64encode(data)
     data64 = encoded_string.decode('UTF-8')
 
     headers = {'content-type': 'application/json'}
 
-    body =  """{"filedata":\""""+data64+"""\","filename":\""""+ fileName+"""\","userkey":\""""+ USERKEY+"""\",\"version\":\""""+VERSION+"""\",\"subuserid\":\""""+subUserId+"""\"}"""
+    body =  """{"filedata":\""""+data64+"""\","filename":\""""+ destination_file_name+"""\","userkey":\""""+ USERKEY+"""\",\"version\":\""""+VERSION+"""\",\"subuserid\":\""""+subUserId+"""\"}"""
 
     response = requests.post(APIURL,data=body,headers=headers)
     resp =json.loads(response.text)
