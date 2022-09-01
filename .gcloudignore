@@ -3,3 +3,5 @@ rchilli-etl-22ae480ed0a1.json
 ssh
 .gitignore
 .gitattributes
+__pycache__/
+.git/
