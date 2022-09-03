@@ -1,4 +1,3 @@
-from ast import Index
 import base64
 import json
 import requests
@@ -11,6 +10,8 @@ APIURL="https://rest.rchilli.com/RChilliParser/Rchilli/parseResumeBinary"
 USERKEY = 'YLJA8V6R'
 VERSION = '8.0.0'
 subUserId = 'Jahanzeb'
+table='rchilli-etl.resumes.Resume_data2'
+
 
 def hello_pubsub(event, context):
     try:
@@ -369,8 +370,8 @@ def hello_pubsub(event, context):
         print("step 5 : Pandas reading json")
         df=pd.DataFrame(dictt,index=[0])
         excel_conversion=destination_file_name+'.xlsx'
-        source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
-        #source_excel_conversion=destination_file_name+'.xlsx' #local env
+        #source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
+        source_excel_conversion=destination_file_name+'.xlsx' #local env
         
 
         print("step 6 : creating excel file")
@@ -383,10 +384,10 @@ def hello_pubsub(event, context):
 
         print("step 7 : loading dataframe into bigquery")
         load_job = client.load_table_from_dataframe(
-        df, 'rchilli-etl.resumes.Resume_data2', job_config=job_config
+        df, table, job_config=job_config
         )
         load_job.result()
-        destination_table = client.get_table('rchilli-etl.resumes.Resume_data2')  # Make an API request.
+        destination_table = client.get_table(table)  # Make an API request.
         print("Loaded {} rows.".format(destination_table.num_rows))
         return("Loaded {} rows.".format(destination_table.num_rows))
     except Exception as e:
