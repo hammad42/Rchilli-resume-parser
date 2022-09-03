@@ -3,8 +3,10 @@ import base64
 import json
 import requests
 from resume_download import download_blob
+from resume_upload import upload_blob
 import pandas as pd
 from google.cloud import bigquery
+import os
 APIURL="https://rest.rchilli.com/RChilliParser/Rchilli/parseResumeBinary"
 USERKEY = 'YLJA8V6R'
 VERSION = '8.0.0'
@@ -366,13 +368,22 @@ def hello_pubsub(event, context):
         # dictt["ApiInfo_AccountExpiryDate"]=str(resp["ResumeParserData"]["ApiInfo"]["AccountExpiryDate"])        
         print("step 5 : Pandas reading json")
         df=pd.DataFrame(dictt,index=[0])
-        print(df)
-        print("step 6 : loading dataframe into bigquery")
+        excel_conversion=destination_file_name+'.xlsx'
+        
+
+        print("step 6 : creating excel file")
+        df.to_excel(excel_conversion)
+        #df.to_excel('/tmp/file_name.xlsx') #use for cf
+        upload_blob("rchilli_excel_data",excel_conversion,"resumes/"+excel_conversion)
+        os.remove(excel_conversion)
+        
+
+        print("step 7 : loading dataframe into bigquery")
         load_job = client.load_table_from_dataframe(
-        df, 'rchilli-etl.resumes.Resume_data3', job_config=job_config
+        df, 'rchilli-etl.resumes.Resume_data2', job_config=job_config
         )
         load_job.result()
-        destination_table = client.get_table('rchilli-etl.resumes.Resume_data3')  # Make an API request.
+        destination_table = client.get_table('rchilli-etl.resumes.Resume_data2')  # Make an API request.
         print("Loaded {} rows.".format(destination_table.num_rows))
         return("Loaded {} rows.".format(destination_table.num_rows))
     except Exception as e:
