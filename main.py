@@ -10,7 +10,7 @@ APIURL="https://rest.rchilli.com/RChilliParser/Rchilli/parseResumeBinary"
 USERKEY = 'YLJA8V6R'
 VERSION = '8.0.0'
 subUserId = 'Jahanzeb'
-table='rchilli-etl.resumes.Resume_data2'
+table='rchilli-etl.staging.resume_data_stg'
 
 
 def hello_pubsub(event, context):
@@ -19,7 +19,10 @@ def hello_pubsub(event, context):
         print("step 1 : getting link from pubsub message")
         client = bigquery.Client() 
         job_config = bigquery.LoadJobConfig(
-            autodetect=True
+            autodetect=True,
+            write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
+            
+
         )
 
         pubsub_message = json.loads(base64.b64decode(event['data']).decode('utf-8'))
