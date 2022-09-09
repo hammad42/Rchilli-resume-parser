@@ -19,9 +19,7 @@ def hello_pubsub(event, context):
         print("step 1 : getting link from pubsub message")
         client = bigquery.Client() 
         job_config = bigquery.LoadJobConfig(
-            autodetect=True,
-            write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
-            
+            #autodetect=True,
 
         )
 
@@ -223,7 +221,48 @@ def hello_pubsub(event, context):
             else:
                 print("SegregatedQualification_Location_Country columns are full")
 
+        y=1
+        for x in resp["ResumeParserData"]["SegregatedQualification"]:
+            if y<4:
+                try:
+                    dictt["SegregatedQualification_SubInstitution_Name"+str(y)]=x["SubInstitution"]["Name"]
+                except:
+                    print("sub institution not found")
+                y=y+1
+            else:
+                print("SegregatedQualification_Institution_Name columns are full")
 
+        y=1
+        for x in resp["ResumeParserData"]["SegregatedQualification"]:
+            if y<4:
+                try:
+                    dictt["SegregatedQualification_SubInstitution_Location_City"+str(y)]=x["SubInstitution"]["Location"]["City"] 
+                except:
+                    print("sub institution not found")
+                y=y+1
+            else:
+                print("SegregatedQualification_SubInstitution_Location_City columns are full")
+
+        y=1
+        for x in resp["ResumeParserData"]["SegregatedQualification"]:
+            if y<4:
+                try:
+                    dictt["SegregatedQualification_SubInstitution_Location_State"+str(y)]=x["SubInstitution"]["Location"]["State"] 
+                except:
+                    print("sub institution not found")
+                y=y+1
+            else:
+                print("SegregatedQualification_SubInstitution_Location_State columns are full")
+        y=1
+        for x in resp["ResumeParserData"]["SegregatedQualification"]:
+            if y<4:
+                try:
+                    dictt["SegregatedQualification_SubInstitution_Location_Country"+str(y)]=x["SubInstitution"]["Location"]["Country"] 
+                except:
+                    print("sub institution not found")
+                y=y+1
+            else:
+                print("SegregatedQualification_SubInstitution_Location_Country columns are full")
         # y=1
         # for x in resp["ResumeParserData"]["SegregatedQualification"]:
         #     if y<4:
@@ -235,10 +274,10 @@ def hello_pubsub(event, context):
         y=1
         for x in resp["ResumeParserData"]["SegregatedQualification"]:
             if y<4:
-                dictt["SegregatedQualification_Institution_DegreeName"+str(y)]=x["Degree"]["DegreeName"] #DegreeName
+                dictt["SegregatedQualification_Degree_DegreeName"+str(y)]=x["Degree"]["DegreeName"] #DegreeName
                 y=y+1
             else:
-                print("SegregatedQualification_Institution_Name columns are full")
+                print("SegregatedQualification_Degree_Name columns are full")
 
         y=1
         for x in resp["ResumeParserData"]["SegregatedQualification"]:
@@ -373,26 +412,31 @@ def hello_pubsub(event, context):
         print("step 5 : Pandas reading json")
         df=pd.DataFrame(dictt,index=[0])
         excel_conversion=destination_file_name+'.xlsx'
-        #source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
-        source_excel_conversion=destination_file_name+'.xlsx' #local env
+        source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
+        #source_excel_conversion=destination_file_name+'.xlsx' #local env
         
 
         print("step 6 : creating excel file")
         df.to_excel(source_excel_conversion)
-        #df.to_excel('/tmp/file_name.xlsx') #use for cf
     
         upload_blob("rchilli_excel_data",source_excel_conversion,"resumes/"+excel_conversion)
         os.remove(source_excel_conversion)
+        print("step 7 : truncating bigquery staging")
+        truncate_stg = """TRUNCATE TABLE  rchilli-etl.staging.resume_data_stg;"""
+        load_job_trunc = client.query(truncate_stg)
         
 
-        print("step 7 : loading dataframe into bigquery")
+        print("step 8 : loading dataframe into bigquery staging")
         load_job = client.load_table_from_dataframe(
         df, table, job_config=job_config
         )
         load_job.result()
-        destination_table = client.get_table(table)  # Make an API request.
-        print("Loaded {} rows.".format(destination_table.num_rows))
-        return("Loaded {} rows.".format(destination_table.num_rows))
+        
+
+        print("step 9 : loading bigquery main")
+        loading_main = """CALL `rchilli-etl.resumes.sp_load_Resume_data`();"""
+        load_job_main = client.query(loading_main)
+        
     except Exception as e:
         print("exception main:  ", e)
         return("exception main:  ", e)
