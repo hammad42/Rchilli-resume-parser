@@ -51,6 +51,7 @@ def hello_pubsub(event, context):
         #print(resp)
         #please handle error too
         Resume =resp["ResumeParserData"]
+        print(Resume)
         print("step 4 : Preparing dictionary for pandas")
         dictt={}
         dictt["ResumeFileName"]=resp["ResumeParserData"]["ResumeFileName"]
@@ -414,8 +415,8 @@ def hello_pubsub(event, context):
         print("step 5 : Pandas reading json")
         df=pd.DataFrame(dictt,index=[0])
         excel_conversion="resume_data.xlsx"
-        #source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
-        source_excel_conversion=destination_file_name+'.xlsx' #local env
+        source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
+        #source_excel_conversion=destination_file_name+'.xlsx' #local env
         
 
         # print("step 6 : creating excel file")
@@ -426,6 +427,7 @@ def hello_pubsub(event, context):
         print("step 6 : truncating bigquery staging")
         truncate_stg = """TRUNCATE TABLE  rchilli-etl.staging.resume_data_stg;"""
         load_job_trunc = client.query(truncate_stg)
+        load_job_trunc.result()
         
 
         print("step 7 : loading dataframe into bigquery staging")
@@ -438,11 +440,12 @@ def hello_pubsub(event, context):
         print("step 8 : loading bigquery main")
         loading_main = """CALL `rchilli-etl.resumes.sp_load_Resume_data`();"""
         load_job_main = client.query(loading_main)
-        time.sleep(15)
+        load_job_main.result()
 
         print("step 10 : creating excel file")
         query = """SELECT  * FROM `rchilli-etl.resumes.Resume_data2` ;"""
         load_job_excel = client.query(query)
+        load_job_excel.result()
         df_excel=load_job_excel.to_dataframe()
         df_excel.to_excel(source_excel_conversion)
 
