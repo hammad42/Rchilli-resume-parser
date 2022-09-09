@@ -6,6 +6,8 @@ from resume_upload import upload_blob
 import pandas as pd
 from google.cloud import bigquery
 import os
+import time
+
 APIURL="https://rest.rchilli.com/RChilliParser/Rchilli/parseResumeBinary"
 USERKEY = 'YLJA8V6R'
 VERSION = '8.0.0'
@@ -411,31 +413,41 @@ def hello_pubsub(event, context):
         # dictt["ApiInfo_AccountExpiryDate"]=str(resp["ResumeParserData"]["ApiInfo"]["AccountExpiryDate"])        
         print("step 5 : Pandas reading json")
         df=pd.DataFrame(dictt,index=[0])
-        excel_conversion=destination_file_name+'.xlsx'
-        source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
-        #source_excel_conversion=destination_file_name+'.xlsx' #local env
+        excel_conversion="resume_data.xlsx"
+        #source_excel_conversion="/tmp/"+destination_file_name+'.xlsx'#cf
+        source_excel_conversion=destination_file_name+'.xlsx' #local env
         
 
-        print("step 6 : creating excel file")
-        df.to_excel(source_excel_conversion)
+        # print("step 6 : creating excel file")
+        # df.to_excel(source_excel_conversion)
     
-        upload_blob("rchilli_excel_data",source_excel_conversion,"resumes/"+excel_conversion)
-        os.remove(source_excel_conversion)
-        print("step 7 : truncating bigquery staging")
+        # upload_blob("rchilli_excel_data",source_excel_conversion,"resumes/"+excel_conversion)
+        # os.remove(source_excel_conversion)
+        print("step 6 : truncating bigquery staging")
         truncate_stg = """TRUNCATE TABLE  rchilli-etl.staging.resume_data_stg;"""
         load_job_trunc = client.query(truncate_stg)
         
 
-        print("step 8 : loading dataframe into bigquery staging")
+        print("step 7 : loading dataframe into bigquery staging")
         load_job = client.load_table_from_dataframe(
         df, table, job_config=job_config
         )
         load_job.result()
         
 
-        print("step 9 : loading bigquery main")
+        print("step 8 : loading bigquery main")
         loading_main = """CALL `rchilli-etl.resumes.sp_load_Resume_data`();"""
         load_job_main = client.query(loading_main)
+        time.sleep(15)
+
+        print("step 10 : creating excel file")
+        query = """SELECT  * FROM `rchilli-etl.resumes.Resume_data2` ;"""
+        load_job_excel = client.query(query)
+        df_excel=load_job_excel.to_dataframe()
+        df_excel.to_excel(source_excel_conversion)
+
+        upload_blob("rchilli_excel_data",source_excel_conversion,"resumes/"+excel_conversion)
+        os.remove(source_excel_conversion)
         
     except Exception as e:
         print("exception main:  ", e)
